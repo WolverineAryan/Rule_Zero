@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model act_categories {
+  act_id      String     @db.Uuid
+  category_id String     @db.Uuid
+  acts        acts       @relation(fields: [act_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories  categories @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([act_id, category_id])
+}
+
+model acts {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ministry_id      String?          @db.Uuid
+  title            String
+  short_title      String?          @db.VarChar(255)
+  enactment_year   Int
+  act_number       String?          @db.VarChar(100)
+  original_pdf_url String?
+  created_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  act_categories   act_categories[]
+  ministries       ministries?      @relation(fields: [ministry_id], references: [id], onUpdate: NoAction)
+  clauses          clauses[]
+  rules            rules[]
+
+  @@index([ministry_id], map: "idx_acts_ministry")
+}
+
+model categories {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String           @db.VarChar(255)
+  slug           String           @unique @db.VarChar(255)
+  description    String?
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  act_categories act_categories[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model clauses {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  act_id           String?   @db.Uuid
+  rule_id          String?   @db.Uuid
+  parent_clause_id String?   @db.Uuid
+  hierarchy_level  String    @db.VarChar(50)
+  clause_number    String    @db.VarChar(100)
+  title            String?
+  content_text     String?
+  ai_description String?
+  requires_compliance Boolean  @default(false)
+  acts             acts?     @relation(fields: [act_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_actions        user_actions[]
+  clauses          clauses?  @relation("clausesToclauses", fields: [parent_clause_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_clauses    clauses[] @relation("clausesToclauses")
+  rules            rules?    @relation(fields: [rule_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([act_id], map: "idx_clauses_act")
+  @@index([parent_clause_id], map: "idx_clauses_parent")
+  @@index([rule_id], map: "idx_clauses_rule")
+}
+
+// 🚀 NEW: The User Persistence Ledger
+model user_actions {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   // The unique ID we will get from our Auth provider
+  clause_id   String   @db.Uuid
+  action_type String   // Will be either "DECODED" (Citizen) or "AUDITED" (Business)
+  created_at  DateTime @default(now())
+
+  clause      clauses  @relation(fields: [clause_id], references: [id], onDelete: Cascade)
+
+  // This ensures a user cannot decode or audit the exact same section twice
+  @@unique([user_id, clause_id, action_type]) 
+}
+
+model ministries {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String  @db.VarChar(255)
+  slug        String  @unique @db.VarChar(255)
+  website_url String?
+  acts        acts[]
+}
+
+model rules {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  act_id           String?   @db.Uuid
+  title            String
+  publication_date DateTime? @db.Date
+  gazette_pdf_url  String?
+  is_active        Boolean?  @default(true)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  clauses          clauses[]
+  acts             acts?     @relation(fields: [act_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([act_id], map: "idx_rules_act")
+}

@@ -1,0 +1,35 @@
+{
+  "name": "rule_zero",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^5.22.0",
+    "@tailwindcss/postcss": "^4.3.0",
+    "firebase": "^12.13.0",
+    "genai": "^0.0.18",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "next": "16.2.6",
+    "postcss": "^8.5.15",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-firebase-hooks": "^5.1.1",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "prisma": "^5.22.0",
+    "typescript": "^5"
+  }
+}
