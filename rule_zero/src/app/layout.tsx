@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import PageTransition from "@/components/PageTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,9 +23,8 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased bg-[#f4f4f0]">
         <Navbar />
-        {/* Simple layout wrapper ensures standard document flow alignment */}
         <div className="w-full">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </div>
       </body>
     </html>

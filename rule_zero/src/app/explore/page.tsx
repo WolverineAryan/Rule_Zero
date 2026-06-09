@@ -3,25 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Updated types to match the new relational database structure
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
-type Act = {
-  id: string;
-  title: string;
-  enactment_year: number;
-  act_categories: { categories: Category }[];
-};
+type Category = { id: string; name: string; slug: string; };
+type Act = { id: string; title: string; enactment_year: number; act_categories: { categories: Category }[]; };
 
 export default function ExploreDashboard() {
   const [acts, setActs] = useState<Act[]>([]);
-  // We will dynamically extract available categories from the acts
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("All Laws");
+  const [selectedCategory, setSelectedCategory] = useState("All Indexed Laws");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,46 +18,44 @@ export default function ExploreDashboard() {
         const res = await fetch('/api/acts');
         const data: Act[] = await res.json();
         setActs(data);
-        
-        // Magically extract all unique category names that exist in the database
         const extractedCategories = new Set<string>();
-        data.forEach(act => {
-          act.act_categories.forEach(ac => extractedCategories.add(ac.categories.name));
-        });
-        setAvailableCategories(["All Laws", ...Array.from(extractedCategories)]);
-        
+        data.forEach(act => act.act_categories.forEach(ac => extractedCategories.add(ac.categories.name)));
+        setAvailableCategories(["All Indexed Laws", ...Array.from(extractedCategories)]);
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Pipeline read error", error);
         setLoading(false);
       }
     }
     fetchActs();
   }, []);
 
-  // Filter the grid based on the dynamically linked categories
   const filteredActs = acts.filter(act => {
-    if (selectedCategory === "All Laws") return true;
-    
-    // Check if the act has a relationship with the selected category
-    const hasCategory = act.act_categories.some(ac => ac.categories.name === selectedCategory);
-    return hasCategory;
+    if (selectedCategory === "All Indexed Laws") return true;
+    return act.act_categories.some(ac => ac.categories.name === selectedCategory);
   });
 
   return (
-    <div className="min-h-screen bg-[#f4f4f0] font-sans text-black pb-12 selection:bg-yellow-300">
-      <main className="max-w-7xl mx-auto px-6 mt-10">
+    <div className="min-h-screen bg-[#FCFAF7] font-sans text-[#261F1A] pb-24 selection:bg-[#DE9E26]/20">
+      <main className="max-w-6xl mx-auto px-6 pt-16">
         
-        {/* Dynamic Category Navigation Bar */}
-        <div className="flex space-x-4 overflow-x-auto pb-4 mb-8 custom-scrollbar">
+        {/* Page Header Matrix */}
+        <div className="mb-12 border-b border-[#EBE5DF] pb-8">
+          <span className="text-[#DE9E26] text-[10px] font-bold uppercase tracking-widest block mb-2">// Repository Registry</span>
+          <h1 className="text-4xl font-serif font-normal tracking-tight mb-3">The Legislative Ledger</h1>
+          <p className="text-xs text-[#261F1A]/60 font-medium">Select an analytical context filter below to isolate operational compliance modules.</p>
+        </div>
+
+        {/* Minimal Architectural Navigation Track */}
+        <div className="flex space-x-8 overflow-x-auto pb-4 mb-12 border-b border-[#EBE5DF]/60 custom-scrollbar scroll-smooth">
           {availableCategories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`whitespace-nowrap px-6 py-2 rounded-xl text-lg font-bold border-4 border-black transition-all duration-150 cursor-pointer ${
+              className={`whitespace-nowrap pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all duration-200 relative top-[2px] ${
                 selectedCategory === category
-                  ? 'bg-[#ffc900] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]'
-                  : 'bg-white hover:bg-[#ffc900] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]'
+                  ? 'border-[#DE9E26] text-[#261F1A]'
+                  : 'border-transparent text-[#261F1A]/40 hover:text-[#261F1A]'
               }`}
             >
               {category}
@@ -78,23 +64,32 @@ export default function ExploreDashboard() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20 text-2xl font-black uppercase animate-pulse">Loading Database Catalog...</div>
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className="w-5 h-5 border-2 border-[#EBE5DF] border-t-[#DE9E26] rounded-full animate-spin"></div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#261F1A]/40">Syncing Ledger Index...</span>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#EBE5DF] border border-[#EBE5DF] rounded-2xl overflow-hidden shadow-sm shadow-[#261F1A]/5">
             {filteredActs.map((act) => (
-              <Link href={`/explore/${act.id}`} key={act.id}>
-                <div className="bg-white p-6 h-full rounded-2xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:-translate-x-1 transition-all duration-200 cursor-pointer flex flex-col justify-between group">
+              <Link href={`/explore/${act.id}`} key={act.id} className="block group">
+                <div className="bg-white p-8 h-full flex flex-col justify-between transition-all duration-300 group-hover:bg-[#FCFAF7]">
                   <div>
-                    <span className="inline-block px-3 py-1 rounded-full text-sm font-black border-2 border-black bg-[#ffc900] mb-4">
-                      Year: {act.enactment_year}
-                    </span>
-                    <h3 className="text-2xl font-black leading-tight mb-3 group-hover:text-neutral-700">
+                    <div className="flex items-center justify-between mb-6">
+                      <span className="text-[10px] font-bold tracking-widest uppercase text-[#DE9E26] bg-[#FCFAF7] border border-[#EBE5DF] px-2.5 py-1 rounded">
+                        Est. {act.enactment_year}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#261F1A]/30 tracking-tighter group-hover:text-[#DE9E26] transition-colors">
+                        // 0x{act.id.substring(0, 4).toUpperCase()}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-serif font-normal leading-snug text-[#261F1A] group-hover:text-black transition-colors">
                       {act.title}
                     </h3>
                   </div>
-                  <div className="mt-6 pt-4 border-t-4 border-black flex items-center justify-between font-bold text-lg">
-                    <span>Explore Document</span>
-                    <span className="text-2xl transition-transform group-hover:translate-x-2">→</span>
+                  
+                  <div className="mt-12 pt-4 border-t border-[#FCFAF7] flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[#261F1A]/40 group-hover:text-[#261F1A] transition-colors">
+                    <span>Initialize Blueprint</span>
+                    <span className="text-sm transform group-hover:translate-x-1 transition-transform">→</span>
                   </div>
                 </div>
               </Link>

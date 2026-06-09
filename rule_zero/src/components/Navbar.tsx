@@ -16,34 +16,53 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="bg-white border-b border-neutral-200 sticky top-0 z-50 shadow-sm font-sans">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-black text-2xl tracking-tight text-black hover:opacity-80 transition-opacity">
-          RULE_ZERO<span className="text-[#ffc900]">.</span>
+    <header className="bg-[#FCFAF7] border-b border-[#EBE5DF] sticky top-0 z-50 backdrop-blur-md bg-opacity-90 font-sans text-[#261F1A]">
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        
+        {/* Brand Pivot Geometric Asset */}
+        <Link href="/" className="inline-flex items-center gap-2.5 font-bold tracking-tight text-lg group">
+          <div className="w-4 h-4 bg-[#DE9E26] rounded-sm transform rotate-45 transition-transform group-hover:rotate-90 duration-300"></div>
+          <span>Rule_Zero</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 font-bold uppercase text-xs tracking-wider text-neutral-600">
-          <Link href="/explore" className="hover:text-black transition-colors">Law Vault</Link>
-          <Link href="/explore" className="hover:text-black transition-colors">Industry Playbooks</Link>
+        {/* Editorial Sub-Navigation items */}
+        <nav className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-[#261F1A]/60">
+          <Link href="/explore" className="hover:text-black transition-colors">Law Catalog</Link>
+          <span className="text-[#EBE5DF]">|</span>
+          <span className="text-neutral-400 select-none">System Active Mode</span>
         </nav>
 
+        {/* Dynamic Auth Node Conditionals */}
         <div>
           {user ? (
-            <div className="flex items-center gap-3 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-full shadow-sm">
+            <div className="flex items-center gap-4 bg-white border border-[#EBE5DF] pl-2 pr-4 py-1.5 rounded-full shadow-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={user.photoURL || ''} alt="Profile" className="w-7 h-7 rounded-full" />
-              <span className="font-bold text-xs uppercase text-neutral-700 hidden sm:inline-block">{user.displayName?.split(' ')[0]}</span>
-              <button onClick={() => signOut(auth)} className="text-xs font-bold uppercase text-red-500 hover:text-red-700 ml-2">Logout</button>
+              <img 
+                src={user.photoURL || ''} 
+                alt="Fiduciary Secure Node Avatar" 
+                className="w-6 h-6 rounded-full border border-[#EBE5DF]" 
+              />
+              <span className="font-bold text-[10px] uppercase tracking-wider text-[#261F1A]/80 hidden sm:inline-block">
+                {user.displayName?.split(' ')[0] || "User"}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-[#DE9E26]" />
+              <button 
+                onClick={() => signOut(auth)} 
+                className="text-[10px] font-bold uppercase tracking-widest text-red-700 hover:text-red-900 transition-colors"
+              >
+                Disconnect
+              </button>
             </div>
           ) : (
             <Link 
               href="/login"
-              className="font-bold text-xs tracking-wider border border-neutral-200 px-5 py-2.5 bg-white text-black rounded-lg shadow-sm hover:shadow-md hover:bg-neutral-50 transition-all uppercase inline-block"
+              className="text-[10px] font-bold uppercase tracking-widest border border-[#261F1A] px-5 py-2.5 bg-[#261F1A] text-white rounded-lg shadow-sm hover:bg-black transition-all inline-block"
             >
-              Sign Up / Login
+              Initialize Node Console
             </Link>
           )}
         </div>
+
       </div>
     </header>
   );

@@ -1,352 +1,394 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { motion } from 'framer-motion';
 
-// --- SVG Icons for the 3D Particle System ---
-const ICONS = [
-  <svg key="scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18m0-18l-7 7m7-7l7 7M5 10v4a7 7 0 0014 0v-4M8 14h8" /></svg>,
-  <svg key="chakra" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full"><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M4.9 19.1L19.1 4.9M7.5 3.5l9 17M3.5 7.5l17 9M3.5 16.5l17-9M7.5 20.5l9-17" /></svg>,
-  <svg key="gavel" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" d="M14 13l-4 4m0 0l-4-4m4 4v7m6-11l-4-4m0 0L8 6m4-4v7m5 6h4m-4 0a2 2 0 11-4 0 2 2 0 014 0zM5 11h4m-4 0a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
-  <svg key="doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-  <svg key="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-];
-
-export default function LandingPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [particles, setParticles] = useState<any[]>([]);
+function WaveBackground() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const generatedParticles = Array.from({ length: 35 }).map((_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      size: Math.random() * 2 + 1.5, 
-      opacity: Math.random() * 0.1 + 0.03, 
-      animationDuration: Math.random() * 20 + 25, 
-      animationDelay: Math.random() * -40, 
-      zTranslate: Math.random() * 600 - 300, 
-      iconIndex: Math.floor(Math.random() * ICONS.length),
-      rotationDir: Math.random() > 0.5 ? 1 : -1,
-    }));
-    setParticles(generatedParticles);
+    let animationFrameId: number;
+    let phase = 0;
 
-    return () => unsubscribe();
+    const resizeCanvas = () => {
+      const width = canvas.parentElement?.offsetWidth || window.innerWidth;
+      const height = canvas.parentElement?.offsetHeight || window.innerHeight;
+      
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const render = () => {
+      const width = canvas.width / (window.devicePixelRatio || 1);
+      const height = canvas.height / (window.devicePixelRatio || 1);
+      
+      ctx.clearRect(0, 0, width, height);
+      
+      const centerY = height * 0.7;
+      phase += 0.005;
+
+      const configurations = [
+        { amplitude: 35, frequency: 0.004, color: 'rgba(222, 158, 38, 0.06)', speed: 1 },
+        { amplitude: 20, frequency: 0.006, color: 'rgba(38, 31, 26, 0.03)', speed: -1.2 },
+        { amplitude: 15, frequency: 0.009, color: 'rgba(222, 158, 38, 0.09)', speed: 0.8 }
+      ];
+
+      configurations.forEach((config) => {
+        ctx.beginPath();
+        ctx.strokeStyle = config.color;
+        ctx.lineWidth = 1.5;
+
+        for (let x = 0; x < width; x++) {
+          const y = centerY + 
+            Math.sin(x * config.frequency + phase * config.speed) * config.amplitude +
+            Math.cos(x * (config.frequency * 0.4) + phase) * (config.amplitude * 0.4);
+          
+          if (x === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f4f4f0] font-sans text-neutral-900 selection:bg-[#ffc900] selection:text-black overflow-x-hidden">
+    <canvas 
+      ref={canvasRef} 
+      className="absolute inset-0 block pointer-events-none z-0 opacity-100"
+    />
+  );
+}
+
+export default function LandingPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (!mounted) return null;
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.15 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+    },
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FCFAF7] font-sans text-[#261F1A] selection:bg-[#DE9E26]/20 selection:text-[#261F1A] overflow-x-hidden">
       
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes float3D {
-          0% { transform: translateY(0) translateZ(var(--tz)) rotate(0deg); }
-          50% { transform: translateY(-80px) translateZ(calc(var(--tz) + 40px)) rotate(calc(180deg * var(--rd))); }
-          100% { transform: translateY(0) translateZ(var(--tz)) rotate(calc(360deg * var(--rd))); }
-        }
-      `}} />
+      {/* 🚀 NAVBAR */}
+      <nav className="fixed top-0 w-full bg-[#FCFAF7]/90 backdrop-blur-md border-b border-[#EBE5DF] z-50">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold tracking-tight text-[#261F1A] flex items-center gap-2.5">
+            <div className="w-5 h-5 bg-[#DE9E26] rounded-sm transform rotate-45"></div>
+            <span>Rule_Zero</span>
+          </Link>
+          <div className="flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-[#261F1A]/70">
+            <Link href="/explore" className="hover:text-black transition-colors">Law Vault</Link>
+            {user ? (
+              <Link href="/explore" className="px-5 py-2.5 bg-[#261F1A] text-white rounded-lg hover:bg-black transition-all shadow-sm">Dashboard</Link>
+            ) : (
+              <Link href="/login" className="px-5 py-2.5 bg-[#DE9E26] text-[#261F1A] rounded-lg hover:bg-[#C98D1E] hover:text-white transition-all shadow-sm">Sign In</Link>
+            )}
+          </div>
+        </div>
+      </nav>
 
       {/* 🚀 SECTION 1: HERO */}
-      <section className="relative pt-24 pb-20 md:pt-32 md:pb-28 px-6 overflow-hidden min-h-[85vh] flex flex-col items-center justify-center">
-        <div className="absolute inset-0 z-0 overflow-hidden" style={{ perspective: '1000px' }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#f4f4f0]/60 to-[#f4f4f0] z-20 pointer-events-none"></div>
-          <div className="absolute inset-0 z-10" style={{ transformStyle: 'preserve-3d' }}>
-            {particles.map((p) => (
-              <div 
-                key={p.id}
-                className="absolute text-neutral-400"
-                style={{
-                  left: `${p.left}%`,
-                  top: `${p.top}%`,
-                  width: `${p.size}rem`,
-                  height: `${p.size}rem`,
-                  opacity: p.opacity,
-                  // @ts-ignore
-                  '--tz': `${p.zTranslate}px`,
-                  '--rd': p.rotationDir,
-                  animation: `float3D ${p.animationDuration}s infinite ease-in-out`,
-                  animationDelay: `${p.animationDelay}s`,
-                }}
-              >
-                {ICONS[p.iconIndex]}
+      <section className="relative pt-44 pb-32 px-6 flex flex-col items-center justify-center text-center min-h-[90vh] bg-[#FCFAF7]">
+        <WaveBackground />
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="relative z-10 max-w-4xl mx-auto flex flex-col items-center"
+        >
+          <motion.div 
+            variants={itemVariants}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F5EFE9] border border-[#EBE5DF] text-[#261F1A] text-[10px] font-bold uppercase tracking-widest mb-8 shadow-sm"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#DE9E26]"></span>
+            The Indian Legislative Operating System
+          </motion.div>
+          
+          <motion.h1 
+            variants={itemVariants}
+            className="text-5xl md:text-7xl font-serif font-normal tracking-tight text-[#261F1A] mb-8 leading-[1.15]"
+          >
+            Legislation Decoded. <br />
+            <span className="font-sans font-black text-transparent bg-clip-text bg-gradient-to-r from-[#261F1A] to-[#DE9E26]">
+              Compliance Computed.
+            </span>
+          </motion.h1>
+          
+          <motion.p 
+            variants={itemVariants}
+            className="max-w-2xl mx-auto text-base md:text-lg text-[#261F1A]/70 mb-12 leading-relaxed font-medium"
+          >
+            Rule_Zero abstracts the noise out of the Gazette of India. Translate complex constitutional texts into plain, structured operational paths for scaling startups and active citizens.
+          </motion.p>
+
+          <motion.div 
+            variants={itemVariants}
+            className="flex flex-col sm:flex-row justify-center gap-4 w-full sm:w-auto"
+          >
+            {user ? (
+              <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }} className="w-full sm:w-auto">
+                <Link href="/explore" className="inline-block w-full text-center px-8 py-4 bg-[#261F1A] text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-md hover:bg-black transition-all">
+                  Open Terminal
+                </Link>
+              </motion.div>
+            ) : (
+              <>
+                <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }} className="w-full sm:w-auto">
+                  <Link href="/signup" className="inline-block w-full text-center px-8 py-4 bg-[#DE9E26] text-[#261F1A] font-bold text-sm uppercase tracking-wider rounded-xl shadow-md hover:bg-[#C98D1E] hover:text-white transition-all">
+                    Start Free Audit
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }} className="w-full sm:w-auto">
+                  <Link href="/explore" className="inline-block w-full text-center px-8 py-4 bg-white text-[#261F1A] font-bold text-sm uppercase tracking-wider rounded-xl border border-[#EBE5DF] shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2">
+                    Browse Law Vault <span>→</span>
+                  </Link>
+                </motion.div>
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* 🚀 SECTION 2: METRICS */}
+      <section className="py-24 px-6 bg-white border-y border-[#EBE5DF]">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-7">
+              <h2 className="text-3xl md:text-4xl font-serif font-normal tracking-tight text-[#261F1A] mb-6 leading-tight">
+                The scope of tech liability in India has shifted permanently.
+              </h2>
+              <p className="text-[#261F1A]/70 mb-6 leading-relaxed text-sm font-medium">
+                With the activation of the Digital Personal Data Protection (DPDP) Act and modernized consumer data frameworks, tech businesses, gaming studios, and infrastructure services must build audit trails early.
+              </p>
+              <p className="text-[#261F1A]/70 leading-relaxed text-sm font-medium">
+                Rule_Zero strips away thousands of pages of cross-references, mapping exactly what your architectural framework requires to operate safely under the Ministry of Law and Justice.
+              </p>
+            </div>
+            <div className="lg:col-span-5 grid grid-cols-2 gap-4">
+              <div className="bg-[#FCFAF7] border border-[#EBE5DF] p-6 rounded-2xl">
+                <h4 className="text-3xl font-black text-[#261F1A] mb-1">₹250Cr</h4>
+                <p className="text-[10px] font-bold text-[#DE9E26] uppercase tracking-widest">Max DPDP Penalty</p>
+              </div>
+              <div className="bg-[#FCFAF7] border border-[#EBE5DF] p-6 rounded-2xl">
+                <h4 className="text-3xl font-black text-[#261F1A] mb-1">500+</h4>
+                <p className="text-[10px] font-bold text-[#DE9E26] uppercase tracking-widest">Pages Indexed</p>
+              </div>
+              <div className="bg-[#FCFAF7] border border-[#EBE5DF] p-6 rounded-2xl">
+                <h4 className="text-3xl font-black text-[#261F1A] mb-1">100%</h4>
+                <p className="text-[10px] font-bold text-[#DE9E26] uppercase tracking-widest">Audit Output</p>
+              </div>
+              <div className="bg-[#261F1A] p-6 rounded-2xl text-white">
+                <h4 className="text-3xl font-black text-[#DE9E26] mb-1">0</h4>
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Unparsed Jargon</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 SECTION 3: INDUSTRY CHANNELS */}
+      <section className="py-24 px-6 bg-[#FCFAF7]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-serif font-normal tracking-tight text-[#261F1A] mb-3">Targeted Industry Frameworks</h2>
+            <p className="text-[#261F1A]/60 max-w-xl mx-auto text-sm font-medium">Isolate structural liabilities instantly by switching your operation context.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: "💼", title: "E-Commerce Systems", desc: "Align platforms directly with Consumer Protection Rules 2020. Protect checkout workflows, display transparency factors, and automate hardware return legal compliance maps." },
+              { icon: "🛠", title: "Application Infrastructure", desc: "Whether compiling native backends or building frontends, isolate explicit pipeline items required to handle citizen identity securely under current data protocols." },
+              { icon: "🔮", title: "Interactive Software", desc: "Isolate precise guidelines for virtual micro-economies, platform gating controls, and transaction trails dictated by the Ministry of Electronics and IT." }
+            ].map((item, idx) => (
+              <motion.div whileHover={{ y: -4 }} key={idx} className="bg-white border border-[#EBE5DF] p-8 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <div className="w-10 h-10 bg-[#FCFAF7] rounded-xl border border-[#EBE5DF] flex items-center justify-center mb-6 text-lg">{item.icon}</div>
+                <h3 className="text-lg font-bold text-[#261F1A] mb-3">{item.title}</h3>
+                <p className="text-[#261F1A]/70 text-xs font-medium leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 SECTION 4: INDEXED REPOSITORY */}
+      <section className="py-24 px-6 bg-[#261F1A] text-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-serif font-normal tracking-tight mb-3">The Indexed Repository</h2>
+            <p className="text-[#DE9E26] text-xs font-bold uppercase tracking-widest">Parser pipelines continuously updated for the latest Gazette updates.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              { act: "Act No. 22 of 2023", title: "Digital Personal Data Protection Act", desc: "Mandatory structural paths for modern databases inside Indian borders. Simplifies notice rules, consent structures, and data erasure mechanics." },
+              { act: "Act No. 21 of 2000", title: "The Information Technology Act", desc: "The root framework governing digital encryption, legal electronic agreements, identity data management, and operational security liabilities." },
+              { act: "G.S.R. 462(E)", title: "Consumer Protection Rules", desc: "Crucial structures for online merchant networks, processing distinct mandates for product tracking, localized updates, and user returns." },
+              { act: "G.S.R. 801(E)", title: "E-Waste Management Framework", desc: "Essential for hardware channels. Explicit paths handling structural producer response factors and environmental tracking components." }
+            ].map((law, idx) => (
+              <div key={idx} className="bg-[#1E1814] border border-neutral-800 p-8 rounded-2xl hover:border-[#DE9E26]/40 transition-colors">
+                <span className="bg-[#DE9E26]/10 text-[#DE9E26] text-[10px] font-bold px-2.5 py-1 rounded border border-[#DE9E26]/20 uppercase tracking-widest">{law.act}</span>
+                <h3 className="text-lg font-bold mt-5 mb-3 text-white">{law.title}</h3>
+                <p className="text-neutral-400 text-xs font-medium leading-relaxed">{law.desc}</p>
               </div>
             ))}
           </div>
         </div>
-
-        <div className="relative z-30 max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-neutral-200 text-neutral-600 text-xs font-bold tracking-widest uppercase mb-8 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#ffc900] animate-pulse"></span>
-            The Indian Legislative OS
-          </div>
-          
-          <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter text-black mb-6 leading-none">
-            RULE_ZERO<span className="text-[#ffc900]">.</span>
-          </h1>
-          
-          <h2 className="text-2xl md:text-4xl font-bold text-neutral-700 mb-6 tracking-tight">
-            The Gazette of India, <span className="bg-[#ffc900] text-black px-3 py-1 rounded-lg inline-block mt-2 md:mt-0">Decoded & Computed.</span>
-          </h2>
-          
-          <p className="max-w-2xl mx-auto text-base md:text-lg text-neutral-600 mb-10 leading-relaxed font-medium">
-            Navigating the Indian regulatory landscape is no longer a bottleneck. Whether you are a scaling enterprise in Nashik or a citizen mapping your rights, Rule_Zero translates complex legal frameworks into high-speed, actionable compliance playbooks.
-          </p>
-
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            {user ? (
-              <Link href="/explore" className="px-8 py-4 bg-black text-white font-bold rounded-xl shadow-lg hover:bg-neutral-800 hover:-translate-y-0.5 transition-all tracking-wide">
-                Access Audit Terminal
-              </Link>
-            ) : (
-              <>
-                <Link href="/signup" className="px-8 py-4 bg-[#ffc900] text-black font-bold rounded-xl shadow-lg shadow-yellow-500/20 hover:bg-[#e6b500] hover:-translate-y-0.5 transition-all tracking-wide">
-                  Start Free Audit
-                </Link>
-                <Link href="/explore" className="px-8 py-4 bg-white text-neutral-900 font-bold rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 tracking-wide">
-                  Browse Law Vault <span className="text-xl">→</span>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
       </section>
 
-      {/* 🚀 SECTION 2: THE CRISIS */}
-      <section className="py-20 px-6 bg-white border-y border-neutral-200">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black tracking-tight text-black mb-6 leading-tight">
-                India's Regulatory Framework is Expanding. <br/>
-                <span className="text-neutral-400">Are you compliant?</span>
-              </h2>
-              <p className="text-neutral-600 mb-6 leading-relaxed">
-                The Indian government is rapidly modernizing digital infrastructure. With the introduction of the Digital Personal Data Protection (DPDP) Act 2023 and the updated Information Technology guidelines, the liability on modern digital businesses has never been higher.
-              </p>
-              <p className="text-neutral-600 leading-relaxed">
-                Rule_Zero isolates your specific business model and strips away thousands of irrelevant clauses, leaving you with exactly what the Ministry of Law & Justice requires from you.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#f4f4f0] border border-neutral-200 p-6 rounded-2xl text-center md:text-left">
-                <h4 className="text-3xl font-black text-black mb-1">₹250Cr</h4>
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wide">Max Penalty</p>
-              </div>
-              <div className="bg-[#f4f4f0] border border-neutral-200 p-6 rounded-2xl text-center md:text-left">
-                <h4 className="text-3xl font-black text-black mb-1">500+</h4>
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wide">Pages Indexed</p>
-              </div>
-              <div className="bg-[#f4f4f0] border border-neutral-200 p-6 rounded-2xl text-center md:text-left">
-                <h4 className="text-3xl font-black text-black mb-1">100%</h4>
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wide">Audit Ready</p>
-              </div>
-              <div className="bg-[#ffc900] border border-[#e6b500] p-6 rounded-2xl text-center md:text-left shadow-inner">
-                <h4 className="text-3xl font-black text-black mb-1">0</h4>
-                <p className="text-xs font-bold text-neutral-800 uppercase tracking-wide">Legal Jargon</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 🚀 SECTION 3: WHO IS THIS FOR? (Targeted Use Cases) */}
-      <section className="py-20 px-6 bg-[#f4f4f0]">
-        <div className="max-w-5xl mx-auto">
+      {/* 🚀 SECTION 5: PIPELINE */}
+      <section className="py-24 px-6 bg-white border-b border-[#EBE5DF]">
+        <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-black mb-4">Precision Playbooks for Modern Startups</h2>
-            <p className="text-neutral-600 max-w-2xl mx-auto">Different business models trigger entirely different legal liabilities. Select your sector to generate targeted audits.</p>
+            <h2 className="text-3xl font-serif font-normal tracking-tight text-[#261F1A] mb-3">The Parsing Workflow</h2>
+            <p className="text-[#261F1A]/50 text-sm font-medium">A deliberate, repeatable methodology for compliance engineering.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-6 text-xl">🛒</div>
-              <h3 className="text-xl font-black text-black mb-3">E-Commerce & Retail</h3>
-              <p className="text-neutral-600 text-sm leading-relaxed">
-                Ensure compliance with the Consumer Protection Rules 2020. Perfect for platforms dealing with digital inventory, refurbished hardware warranties, and marketplace grievance redressal.
-              </p>
-            </div>
-            
-            <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-6 text-xl">💻</div>
-              <h3 className="text-xl font-black text-black mb-3">App Developers</h3>
-              <p className="text-neutral-600 text-sm leading-relaxed">
-                Whether you are deploying Kotlin backends or Angular web interfaces, ensure your data pipelines and API endpoints legally comply with the DPDP Act's strict data fiduciary guidelines.
-              </p>
-            </div>
-
-            <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-6 text-xl">🎮</div>
-              <h3 className="text-xl font-black text-black mb-3">Game Development</h3>
-              <p className="text-neutral-600 text-sm leading-relaxed">
-                Navigate the specific legalities of virtual economies, in-game currency, digital item procurement, and age-gating mechanisms required by the Ministry of Electronics and IT.
-              </p>
-            </div>
+          <div className="space-y-12 relative before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-[#EBE5DF]">
+            {[
+              { num: "01", title: "Isolate System Target", desc: "Declare your operating scope. We instantly mask secondary frameworks, creating a tailored collection of acts relevant exclusively to your logic layout." },
+              { num: "02", title: "Execute Translation Protocol", desc: "Pass complex clauses through our contextual simplification layer. Dense archaic legalese is stripped down to clear, executable operational steps." },
+              { num: "03", title: "Maintain Cloud Audit Trail", desc: "Track progress seamlessly across iterative changes. State adjustments write cleanly to an encrypted Postgres vault, compiling clear validation matrices." }
+            ].map((item, idx) => (
+              <div key={idx} className="relative flex items-start gap-6 group">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#FCFAF7] border border-[#EBE5DF] text-[#DE9E26] text-xs font-bold shrink-0 z-10 shadow-sm">
+                  {item.num}
+                </div>
+                <div className="bg-[#FCFAF7] border border-[#EBE5DF] p-6 rounded-2xl flex-1">
+                  <h3 className="text-base font-bold text-[#261F1A] mb-2">{item.title}</h3>
+                  <p className="text-[#261F1A]/70 text-xs font-medium leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* 🚀 SECTION 4: CORE LEGISLATIONS (Expanded) */}
-      <section className="py-20 px-6 bg-black text-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Indexed Indian Legislations</h2>
-            <p className="text-neutral-400 max-w-2xl mx-auto">Continuously updated to reflect the latest Gazette notifications and regulatory shifts.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl hover:border-neutral-700 transition-colors">
-              <span className="bg-[#ffc900] text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Act No. 22 of 2023</span>
-              <h3 className="text-xl font-bold mt-4 mb-3">Digital Personal Data Protection Act, 2023</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">Mandatory compliance for any entity collecting digital data. Decodes Data Fiduciary obligations, verifiable parental consent, and right to erasure.</p>
-            </div>
-            
-            <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl hover:border-neutral-700 transition-colors">
-              <span className="bg-[#ffc900] text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Act No. 21 of 2000</span>
-              <h3 className="text-xl font-bold mt-4 mb-3">The Information Technology Act, 2000</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">The foundational law for cyber security in India. Decodes requirements for electronic contracts, digital signatures, and intermediary liability.</p>
-            </div>
-
-            <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl hover:border-neutral-700 transition-colors">
-              <span className="bg-[#ffc900] text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">G.S.R. 462(E)</span>
-              <h3 className="text-xl font-bold mt-4 mb-3">Consumer Protection (E-Commerce) Rules</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">Essential for retail platforms. Decodes guidelines for marketplace vs inventory models, mandatory product origin displays, and cancellation policies.</p>
-            </div>
-
-            <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl hover:border-neutral-700 transition-colors">
-              <span className="bg-[#ffc900] text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">G.S.R. 801(E)</span>
-              <h3 className="text-xl font-bold mt-4 mb-3">E-Waste (Management) Rules, 2022</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">Critical for hardware manufacturers and refurbished electronics platforms. Outlines Extended Producer Responsibility (EPR) and disposal frameworks.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 🚀 SECTION 5: THE TECHNICAL PIPELINE */}
-      <section className="py-20 px-6 bg-[#f4f4f0] border-y border-neutral-200">
-        <div className="max-w-5xl mx-auto">
+      {/* 🚀 SECTION 6: FAQ */}
+      <section className="py-24 px-6 bg-[#FCFAF7] border-b border-[#EBE5DF]">
+        <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-black mb-4">From Raw Law to Final PDF</h2>
-            <p className="text-neutral-600 max-w-2xl mx-auto">A systematic, repeatable infrastructure for maintaining corporate governance.</p>
+            <h2 className="text-3xl font-serif font-normal tracking-tight text-[#261F1A]">Platform Disclaimers & Scope</h2>
           </div>
 
-          <div className="space-y-16 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-1 before:bg-neutral-200">
-            
-            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#f4f4f0] bg-[#ffc900] text-black font-black shadow-sm shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">1</div>
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-white border border-neutral-200 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <h3 className="text-xl font-bold text-black mb-2">Isolate Context</h3>
-                <p className="text-neutral-600 text-sm leading-relaxed">Select your specific domain. The system dynamically filters the database to show only legally binding clauses for your sector, omitting irrelevant noise.</p>
+          <div className="space-y-4">
+            {[
+              { q: "Does Rule_Zero replace an retained legal advocate?", a: "No. Rule_Zero operates as an engineering-focused pre-audit protocol. It structuralizes code paths so you know what requirements exist, but doesn't replace tailored, registered legal opinion." },
+              { q: "How is data processing handled safely?", a: "Audit progress targets are strictly compartmentalized by cryptographic user identities. Rule_Zero stores structural completion flags inside verified cloud infrastructure pipelines." }
+            ].map((faq, idx) => (
+              <div key={idx} className="p-6 bg-white border border-[#EBE5DF] rounded-xl shadow-sm">
+                <h4 className="text-sm font-bold text-[#261F1A] mb-2">{faq.q}</h4>
+                <p className="text-[#261F1A]/60 text-xs font-medium leading-relaxed">{faq.a}</p>
               </div>
-            </div>
-
-            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#f4f4f0] bg-[#ffc900] text-black font-black shadow-sm shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">2</div>
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-white border border-neutral-200 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <h3 className="text-xl font-bold text-black mb-2">AI Translation Protocol</h3>
-                <p className="text-neutral-600 text-sm leading-relaxed">Our system processes complex parliamentary language through a targeted AI translation layer, converting deep legalese into standard operational tasks.</p>
-              </div>
-            </div>
-
-            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#f4f4f0] bg-[#ffc900] text-black font-black shadow-sm shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">3</div>
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-white border border-neutral-200 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <h3 className="text-xl font-bold text-black mb-2">Cloud-Synced Export</h3>
-                <p className="text-neutral-600 text-sm leading-relaxed">Check off requirements as you build. Export a structured, color-coded PDF report to instantly verify your compliance standing to investors or legal advisors.</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* 🚀 SECTION 6: FAQ (New Content) */}
-      <section className="py-20 px-6 bg-white border-b border-neutral-200">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-black mb-4">Frequently Asked Questions</h2>
-          </div>
-
-          <div className="space-y-6">
-            <div className="p-6 bg-[#f4f4f0] border border-neutral-200 rounded-2xl">
-              <h4 className="text-lg font-bold text-black mb-2">Does Rule_Zero replace a corporate lawyer?</h4>
-              <p className="text-neutral-600 text-sm leading-relaxed">No. Rule_Zero is an educational and preliminary audit tool designed to give founders and citizens a massive head start. It translates requirements so you know exactly what to build, but you should always consult a registered advocate for binding legal counsel.</p>
-            </div>
-            
-            <div className="p-6 bg-[#f4f4f0] border border-neutral-200 rounded-2xl">
-              <h4 className="text-lg font-bold text-black mb-2">Are the AI translations accurate?</h4>
-              <p className="text-neutral-600 text-sm leading-relaxed">Yes. Our pipeline is strictly constrained to standard English translations of the original text. It does not "hallucinate" new laws; it merely simplifies the vocabulary and structure of the existing clauses published in the Gazette of India.</p>
-            </div>
-
-            <div className="p-6 bg-[#f4f4f0] border border-neutral-200 rounded-2xl">
-              <h4 className="text-lg font-bold text-black mb-2">Where is my audit data saved?</h4>
-              <p className="text-neutral-600 text-sm leading-relaxed">Your progress (which clauses you have checked off) is securely saved to an encrypted cloud PostgreSQL database. We do not store your proprietary business logic, only your structural compliance score.</p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* 🚀 SECTION 7: DUAL LENS ARCHITECTURE */}
-      <section className="py-20 px-6 max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-black mb-4">Two Modes of Operation</h2>
-          <p className="text-neutral-600 max-w-2xl mx-auto">Select the environment tailored to your current legal objective.</p>
+      <section className="py-24 px-6 max-w-5xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-serif font-normal tracking-tight text-[#261F1A] mb-3">Two Modes of Operation</h2>
+          <p className="text-[#261F1A]/50 text-sm font-medium">Select the system alignment that fits your task layer.</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          <div className="bg-white border border-neutral-200 p-10 rounded-3xl shadow-sm hover:shadow-lg transition-all flex flex-col justify-between">
+          <div className="bg-white border border-[#EBE5DF] p-10 rounded-2xl shadow-sm flex flex-col justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#f4f4f0] text-neutral-600 text-xs font-bold uppercase tracking-wider mb-6">
-                Mode 01 // Citizen
-              </div>
-              <h3 className="text-3xl font-black text-black mb-4">Civic Encyclopedia</h3>
-              <p className="text-neutral-600 leading-relaxed mb-8 text-sm">
-                Stop guessing your constitutional rights. Browse raw legal clauses instantly rewritten into plain English. Understand your rights during consumer disputes and digital data breaches.
+              <span className="inline-block px-3 py-1 rounded bg-[#FCFAF7] border border-[#EBE5DF] text-[#261F1A]/60 text-[10px] font-bold uppercase tracking-widest mb-6">Mode 01 // Public Sector</span>
+              <h3 className="text-2xl font-bold text-[#261F1A] mb-3">Civic Encyclopedia</h3>
+              <p className="text-[#261F1A]/60 text-xs font-medium leading-relaxed mb-8">
+                Isolate raw constitutional elements cleanly. Browse unparsed rules mapped out explicitly in real-world everyday syntax to audit consumer, digital, and data rights instantly.
               </p>
             </div>
-            <Link href="/explore" className="w-full text-center px-6 py-4 bg-[#f4f4f0] text-black font-bold rounded-xl border border-neutral-200 hover:bg-neutral-200 transition-colors">
-              Enter Civic Mode
+            <Link href="/explore" className="w-full text-center px-6 py-3.5 bg-[#FCFAF7] text-[#261F1A] border border-[#EBE5DF] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#F5EFE9] transition-colors">
+              Access Civic Vault
             </Link>
           </div>
 
-          <div className="bg-black border border-neutral-800 p-10 rounded-3xl shadow-lg flex flex-col justify-between relative overflow-hidden">
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-neutral-900 text-[#ffc900] border border-neutral-800 text-xs font-bold uppercase tracking-wider mb-6">
-                Mode 02 // Enterprise
-              </div>
-              <h3 className="text-3xl font-black text-white mb-4">Startup Playbooks</h3>
-              <p className="text-neutral-400 leading-relaxed mb-8 text-sm">
-                Designed for founders. Lock down explicit legal liability loops for your platform or studio. Track real-time compliance to ensure you are ready for due diligence and Series A funding.
+          <div className="bg-[#261F1A] text-white p-10 rounded-2xl shadow-xl flex flex-col justify-between relative overflow-hidden">
+            <div>
+              <span className="inline-block px-3 py-1 rounded bg-neutral-900 border border-neutral-800 text-[#DE9E26] text-[10px] font-bold uppercase tracking-widest mb-6">Mode 02 // Governance Node</span>
+              <h3 className="text-2xl font-bold text-white mb-3">Startup Audit Terminal</h3>
+              <p className="text-neutral-400 text-xs font-medium leading-relaxed mb-8">
+                Designed explicitly for structural validation maps. Lock down data constraints for deployment, track persistent compliance metrics, and deliver verified output frameworks for enterprise stakeholders.
               </p>
             </div>
-            <Link href={user ? "/explore" : "/login"} className="relative z-10 w-full text-center px-6 py-4 bg-[#ffc900] text-black font-bold rounded-xl hover:bg-[#e6b500] shadow-lg shadow-yellow-900/20 transition-colors">
-              Launch Audit Terminal
+            <Link href={user ? "/explore" : "/login"} className="w-full text-center px-6 py-3.5 bg-[#DE9E26] text-[#261F1A] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#C98D1E] hover:text-white transition-all shadow-md">
+              Initialize Audit Engine
             </Link>
           </div>
-
         </div>
       </section>
 
       {/* 🚀 FOOTER */}
-      <footer className="bg-white border-t border-neutral-200 py-12 px-6">
+      <footer className="bg-white border-t border-[#EBE5DF] py-14 px-6 mt-12">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-center md:text-left">
-            <h2 className="text-xl font-black tracking-tight text-black">RULE_ZERO<span className="text-[#ffc900]">.</span></h2>
-            <p className="text-neutral-500 text-xs mt-2 font-medium">The Indian Legislative Operating System.</p>
+            <h2 className="text-lg font-bold tracking-tight text-[#261F1A] flex items-center gap-2 justify-center md:justify-start">
+              <div className="w-4 h-4 bg-[#DE9E26] rounded-sm transform rotate-45"></div>
+              <span>Rule_Zero</span>
+            </h2>
+            <p className="text-[#261F1A]/50 text-xs mt-2 font-semibold uppercase tracking-wider">The Indian Legislative Operating System.</p>
           </div>
-          <div className="flex gap-8 text-sm font-bold text-neutral-600">
+          <div className="flex gap-8 text-xs font-bold uppercase tracking-widest text-[#261F1A]/60">
             <Link href="/explore" className="hover:text-black transition-colors">Law Vault</Link>
-            <Link href="/login" className="hover:text-black transition-colors">Client Login</Link>
-            <Link href="/signup" className="hover:text-black transition-colors">Create Account</Link>
+            <Link href="/login" className="hover:text-black transition-colors">Console Login</Link>
           </div>
         </div>
       </footer>
-
     </div>
   );
-} 
+}

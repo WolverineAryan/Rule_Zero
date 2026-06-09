@@ -13,6 +13,7 @@
     "@prisma/client": "^5.22.0",
     "@tailwindcss/postcss": "^4.3.0",
     "firebase": "^12.13.0",
+    "framer-motion": "^12.40.0",
     "genai": "^0.0.18",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
